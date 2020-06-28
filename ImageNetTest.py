@@ -14,40 +14,25 @@ def getModel(img_rows, img_cols, img_chl):
     
     inputs = keras.Input(shape = (img_rows, img_cols, img_chl))
 
-    x1 = keras.layers.Conv2D(16, 3, activation = 'relu', padding = 'same', input_shape = (img_rows, img_cols, img_chl))(inputs)
-    y1 = keras.layers.MaxPool2D(pool_size = (2,2))(x1)
+    x = keras.layers.Conv2D(64, 3, activation = 'relu', padding = 'same', input_shape = (img_rows, img_cols, img_chl))(inputs)
+    y = keras.layers.MaxPool2D(pool_size = (2,2))(x)
+    shortcut = y
 
-    x2 = keras.layers.Conv2D(16, 5, activation = 'relu', padding = 'same', input_shape = (img_rows, img_cols, img_chl))(inputs)
-    y2 = keras.layers.MaxPool2D(pool_size = (2,2))(x2)
+    x = keras.layers.Conv2D(64, 5, activation = 'relu', padding = 'same')(y)
+    y = keras.layers.MaxPool2D(pool_size = (2,2))(x)
 
-    x3 = keras.layers.Conv2D(16, 7, activation = 'relu', padding = 'same', input_shape = (img_rows, img_cols, img_chl))(inputs)
-    y3 = keras.layers.MaxPool2D(pool_size = (2,2))(x3)
+    x = keras.layers.Conv2D(64, 7, activation = 'relu', padding = 'same')(y)
+    y = keras.layers.MaxPool2D(pool_size = (2,2))(x)
 
-    x23 = keras.layers.Conv2D(16, 5,activation = 'relu', padding = 'same')(tf.add(x2, x3))
-    x123 = keras.layers.Conv2D(16, 5,activation = 'relu', padding = 'same')(tf.add(x1, x23))
-    y2 =  keras.layers.MaxPool2D(pool_size = (2,2))(x123)
+    shortcut = keras.layers.Conv2D(64, 3, activation = 'relu', padding = 'same')(shortcut)
+    shortcut = keras.layers.MaxPool2D(pool_size = (4,4))(shortcut)
 
-    x1 = keras.layers.Conv2D(8, 3, activation = 'relu', padding = 'same')(x123)
-    y1 = keras.layers.MaxPool2D(pool_size = (2,2))(x1)
+    y = keras.layers.Add()([y, shortcut])
 
-    x2 = keras.layers.Conv2D(8, 5, activation = 'relu', padding = 'same')(x123)
-    y2 = keras.layers.MaxPool2D(pool_size = (2,2))(x2)
+    x = keras.layers.Conv2D(64, 3, activation = 'relu', padding = 'same')(y)
+    y = keras.layers.MaxPool2D(pool_size = (2,2))(x)
 
-    x3 = keras.layers.Conv2D(8, 7, activation = 'relu', padding = 'same')(x123)
-    y3 = keras.layers.MaxPool2D(pool_size = (2,2))(x3)
-
-    x3 = keras.layers.Conv2D(8, 9, activation = 'relu', padding = 'same')(x123)
-    y3 = keras.layers.MaxPool2D(pool_size = (2,2))(x3)
-
-    x4 = keras.layers.Conv2D(8, 11, activation = 'relu', padding = 'same')(x123)
-    y3 = keras.layers.MaxPool2D(pool_size = (2,2))(x4)
-
-    x34 = keras.layers.Conv2D(8, 3,activation = 'relu', padding = 'same')(tf.add(x3, x4))
-    x234 = keras.layers.Conv2D(8, 3,activation = 'relu', padding = 'same')(tf.add(x2, x34))
-    x1234 = keras.layers.Conv2D(8, 3,activation = 'relu', padding = 'same')(tf.add(x1, x234))
-    y2 =  keras.layers.MaxPool2D(pool_size = (2,2))(x1234)
-
-    flat_1 = keras.layers.Flatten()(y2)
+    flat_1 = keras.layers.Flatten()(y)
     outputs = keras.layers.Dense(100, activation = 'softmax')(flat_1)
     outputs = keras.layers.Dense(10, activation = 'softmax')(outputs)
     model = keras.models.Model(inputs = inputs, outputs = outputs)
@@ -87,16 +72,22 @@ x_train = nx_train
 x_test = nx_test
 
 model = getModel(img_rows, img_cols, img_chl)
+opt = keras.optimizers.Adam(learning_rate = 1e-4)
+model.compile(loss = 'categorical_crossentropy', metrics = ['accuracy'], optimizer = opt)
 
-model.compile(loss = 'categorical_crossentropy', optimizer = 'sgd', metrics = ['accuracy'])
-
-callback_checkpoint = keras.callbacks.ModelCheckpoint("./check_points", monitor = 'val_loss', verbose = 0, save_best_only = False, mode='auto', save_freq=1)
-callback_tfboard = keras.callbacks.TensorBoard(log_dir='./logs', profile_batch = 100000000)
+callback_checkpoint = keras.callbacks.ModelCheckpoint("./check_points", monitor = 'val_loss', verbose = 1, save_best_only = False, mode='auto', save_freq=10)
+callback_tfboard = keras.callbacks.TensorBoard(log_dir='./logs', profile_batch = 100000000, histogram_freq=0, write_graph=True, write_images=True)
+callback_reduceLR =  keras.callbacks.ReduceLROnPlateau(
+    monitor='val_loss',  # 검증 손실을 기준으로 callback이 호출됩니다
+    factor=0.5,          # callback 호출시 학습률을 1/2로 줄입니다
+    patience=10,         # epoch 10 동안 개선되지 않으면 callback이 호출됩니다
+)
 MyCallbacks = [
 callback_checkpoint, 
-callback_tfboard
+callback_tfboard,
+#callback_reduceLR
 ]
-hist = model.fit(x_train, y_train, batch_size = 100, epochs = 100, validation_data=(x_test, y_test), callbacks = MyCallbacks)
+hist = model.fit(x_train, y_train, batch_size = 1000, epochs = 1000, validation_data=(x_test, y_test), callbacks = MyCallbacks)
 
 fig, ax_loss = plt.subplots()
 ax_acc = ax_loss.twinx()
