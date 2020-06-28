@@ -7,7 +7,54 @@ import tensorflow as tf
 
 from tensorflow import keras
 import os
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
+def getModel(img_rows, img_cols, img_chl):
+    
+    inputs = keras.Input(shape = (img_rows, img_cols, img_chl))
+
+    x1 = keras.layers.Conv2D(16, 3, activation = 'relu', padding = 'same', input_shape = (img_rows, img_cols, img_chl))(inputs)
+    y1 = keras.layers.MaxPool2D(pool_size = (2,2))(x1)
+
+    x2 = keras.layers.Conv2D(16, 5, activation = 'relu', padding = 'same', input_shape = (img_rows, img_cols, img_chl))(inputs)
+    y2 = keras.layers.MaxPool2D(pool_size = (2,2))(x2)
+
+    x3 = keras.layers.Conv2D(16, 7, activation = 'relu', padding = 'same', input_shape = (img_rows, img_cols, img_chl))(inputs)
+    y3 = keras.layers.MaxPool2D(pool_size = (2,2))(x3)
+
+    x23 = keras.layers.Conv2D(16, 5,activation = 'relu', padding = 'same')(tf.add(x2, x3))
+    x123 = keras.layers.Conv2D(16, 5,activation = 'relu', padding = 'same')(tf.add(x1, x23))
+    y2 =  keras.layers.MaxPool2D(pool_size = (2,2))(x123)
+
+    x1 = keras.layers.Conv2D(8, 3, activation = 'relu', padding = 'same')(x123)
+    y1 = keras.layers.MaxPool2D(pool_size = (2,2))(x1)
+
+    x2 = keras.layers.Conv2D(8, 5, activation = 'relu', padding = 'same')(x123)
+    y2 = keras.layers.MaxPool2D(pool_size = (2,2))(x2)
+
+    x3 = keras.layers.Conv2D(8, 7, activation = 'relu', padding = 'same')(x123)
+    y3 = keras.layers.MaxPool2D(pool_size = (2,2))(x3)
+
+    x3 = keras.layers.Conv2D(8, 9, activation = 'relu', padding = 'same')(x123)
+    y3 = keras.layers.MaxPool2D(pool_size = (2,2))(x3)
+
+    x4 = keras.layers.Conv2D(8, 11, activation = 'relu', padding = 'same')(x123)
+    y3 = keras.layers.MaxPool2D(pool_size = (2,2))(x4)
+
+    x34 = keras.layers.Conv2D(8, 3,activation = 'relu', padding = 'same')(tf.add(x3, x4))
+    x234 = keras.layers.Conv2D(8, 3,activation = 'relu', padding = 'same')(tf.add(x2, x34))
+    x1234 = keras.layers.Conv2D(8, 3,activation = 'relu', padding = 'same')(tf.add(x1, x234))
+    y2 =  keras.layers.MaxPool2D(pool_size = (2,2))(x1234)
+
+    flat_1 = keras.layers.Flatten()(y2)
+    outputs = keras.layers.Dense(100, activation = 'softmax')(flat_1)
+    outputs = keras.layers.Dense(10, activation = 'softmax')(outputs)
+    model = keras.models.Model(inputs = inputs, outputs = outputs)
+
+    model.summary()
+
+    return model
 
 # load datasets
 cifar10 = keras.datasets.cifar10
@@ -39,50 +86,17 @@ for i in range(3):
 x_train = nx_train
 x_test = nx_test
 
-inputs = keras.Input(shape = (img_rows, img_cols, img_chl))
+model = getModel(img_rows, img_cols, img_chl)
 
-x1 = keras.layers.Conv2D(64, 3, activation = 'relu', padding = 'same', input_shape = (img_rows, img_cols, img_chl))(inputs)
-y1 = keras.layers.MaxPool2D(pool_size = (2,2))(x1)
+model.compile(loss = 'categorical_crossentropy', optimizer = 'sgd', metrics = ['accuracy'])
 
-x2 = keras.layers.Conv2D(64, 5, activation = 'relu', padding = 'same', input_shape = (img_rows, img_cols, img_chl))(inputs)
-y2 = keras.layers.MaxPool2D(pool_size = (2,2))(x2)
-
-x3 = keras.layers.Conv2D(64, 7, activation = 'relu', padding = 'same', input_shape = (img_rows, img_cols, img_chl))(inputs)
-y3 = keras.layers.MaxPool2D(pool_size = (2,2))(x3)
-
-x23 = keras.layers.Conv2D(64, 5,activation = 'relu', padding = 'same')(tf.add(x2, x3))
-x123 = keras.layers.Conv2D(64, 5,activation = 'relu', padding = 'same')(tf.add(x1, x23))
-y2 =  keras.layers.MaxPool2D(pool_size = (2,2))(x123)
-
-x1 = keras.layers.Conv2D(32, 3, activation = 'relu', padding = 'same')(x123)
-y1 = keras.layers.MaxPool2D(pool_size = (2,2))(x1)
-
-x2 = keras.layers.Conv2D(32, 5, activation = 'relu', padding = 'same')(x123)
-y2 = keras.layers.MaxPool2D(pool_size = (2,2))(x2)
-
-x3 = keras.layers.Conv2D(32, 7, activation = 'relu', padding = 'same')(x123)
-y3 = keras.layers.MaxPool2D(pool_size = (2,2))(x3)
-
-x3 = keras.layers.Conv2D(32, 9, activation = 'relu', padding = 'same')(x123)
-y3 = keras.layers.MaxPool2D(pool_size = (2,2))(x3)
-
-x4 = keras.layers.Conv2D(32, 11, activation = 'relu', padding = 'same')(x123)
-y3 = keras.layers.MaxPool2D(pool_size = (2,2))(x4)
-
-x34 = keras.layers.Conv2D(32, 3,activation = 'relu', padding = 'same')(tf.add(x3, x4))
-x234 = keras.layers.Conv2D(32, 3,activation = 'relu', padding = 'same')(tf.add(x2, x34))
-x1234 = keras.layers.Conv2D(64, 3,activation = 'relu', padding = 'same')(tf.add(x1, x234))
-y2 =  keras.layers.MaxPool2D(pool_size = (2,2))(x1234)
-
-flat_1 = keras.layers.Flatten()(y2)
-outputs = keras.layers.Dense(100, activation = 'softmax')(flat_1)
-outputs = keras.layers.Dense(10, activation = 'softmax')(flat_1)
-model = keras.models.Model(inputs = inputs, outputs = outputs)
-
-model.summary()
-
-model.compile(loss = 'categorical_crossentropy', optimizer = 'adam', metrics = ['accuracy'])
-hist = model.fit(x_train, y_train, batch_size = 10, epochs = 1000, validation_data=(x_test, y_test))
+callback_checkpoint = keras.callbacks.ModelCheckpoint("./check_points", monitor = 'val_loss', verbose = 0, save_best_only = False, mode='auto', save_freq=1)
+callback_tfboard = keras.callbacks.TensorBoard(log_dir='./logs', profile_batch = 100000000)
+MyCallbacks = [
+callback_checkpoint, 
+callback_tfboard
+]
+hist = model.fit(x_train, y_train, batch_size = 100, epochs = 100, validation_data=(x_test, y_test), callbacks = MyCallbacks)
 
 fig, ax_loss = plt.subplots()
 ax_acc = ax_loss.twinx()
